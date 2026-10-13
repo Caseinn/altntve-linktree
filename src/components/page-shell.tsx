@@ -9,7 +9,7 @@ export function PageShell({
 }) {
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-10 sm:py-12">
-      {header}
+      {header ? <div className="mb-4">{header}</div> : null}
 
       <div className="flex flex-1 flex-col gap-10 sm:gap-12">{children}</div>
 
