@@ -5,11 +5,32 @@
  * artwork stays scoped to the public profile. Every other route keeps the flat
  * page background.
  *
- * `bg-[length:auto_100%]` scales by height so the drawing keeps one proportion
- * at every screen size. `cover` only matches that on phones, where the viewport
- * is tall enough for height to be the limiting dimension; on wide screens cover
- * flips to width, scales the artwork past its natural size, and the globe grows
- * to roughly twice the viewport height.
+ * Sizing reproduces `background-size: auto 100%`: height is pinned to the
+ * viewport and the width follows from the aspect ratio, so the drawing keeps one
+ * proportion at every screen size. `object-fit: cover` does not. On phones,
+ * where the viewport is tall enough that height is the limiting dimension, the
+ * two agree; on wide screens cover flips to width, scales the artwork past its
+ * natural size, and grows the globe to roughly twice the viewport height.
+ *
+ * `object-contain` would also be wrong here, and in the opposite direction. It
+ * fits inside both axes, so on a 390x844 phone it shrinks the globe to 390x488
+ * and leaves empty bands above and below, where `auto 100%` renders it 675x844
+ * and crops the sides. The globe is meant to bleed past the frame, so the width
+ * is allowed to overflow and the horizontal centring does the cropping.
+ * `max-w-none` is required to defeat the Tailwind preflight `max-width: 100%`
+ * on images, and `h-full` to defeat its paired `height: auto`.
+ *
+ * `<picture>` rather than a CSS `background-image` for discovery, not fidelity.
+ * A background URL is invisible to the preload scanner: the browser cannot see
+ * it until the stylesheet has downloaded and been parsed, so the artwork always
+ * trails the text by a full CSS round trip. An `<img>` in the markup is found
+ * during the initial HTML scan. The AVIF source halves the payload against the
+ * original WebP at matched dot density, and the WebP stays as the fallback.
+ *
+ * `fetchPriority="low"` is deliberate. The avatar is the LCP element and already
+ * claims `fetchPriority="high"`; this plate is decoration behind the copy, so it
+ * must not compete for bandwidth ahead of the thing that actually gates paint.
+ * `decoding="async"` keeps the decode off the critical path for the same reason.
  *
  * Negative z-index keeps it behind the in-flow content. It is safe against the
  * flat background because `html` sets no background of its own, so `body`'s
@@ -40,10 +61,20 @@
 export function BackgroundPlate() {
   return (
     <>
-      <div
-        aria-hidden
-        className="pointer-events-none fixed inset-0 -z-10 bg-[url(/background.webp)] bg-[length:auto_100%] bg-center bg-no-repeat opacity-50"
-      />
+      <picture>
+        <source srcSet="/background.avif" type="image/avif" />
+
+        <img
+          alt=""
+          aria-hidden
+          className="pointer-events-none fixed top-0 left-1/2 -z-10 h-full w-auto max-w-none -translate-x-1/2 opacity-50"
+          decoding="async"
+          fetchPriority="low"
+          height={1350}
+          src="/background.webp"
+          width={1080}
+        />
+      </picture>
 
       <div
         aria-hidden
