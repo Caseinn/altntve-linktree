@@ -6,28 +6,40 @@ import { IconPicker } from "@/components/icon-picker"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { LINK_KIND_LABELS, LINK_KINDS, type LinkKind } from "@/config/brand"
+import { publicLinkHref, slugify } from "@/lib/routes"
 
 type LinkFieldValues = {
   icon: null | string
   kind: LinkKind
   note: string
-  slug: string
   title: string
   url: string
 }
 
+/**
+ * Create and edit fields for one link.
+ *
+ * The slug is derived from the title on the server at creation and never
+ * rewritten afterwards, so `lockedSlug` pins the preview to the URL an existing
+ * link already serves rather than to whatever the title currently says. Without
+ * it, renaming a link would preview a `/l/` path that does not exist. Omit it
+ * for a new link, where the preview follows the title as it is typed.
+ */
 export function LinkFields({
   defaults,
   idPrefix,
-  showSlug,
+  lockedSlug,
 }: {
   defaults?: Partial<LinkFieldValues>
   idPrefix: string
-  showSlug: boolean
+  lockedSlug?: string
 }) {
   const id = (name: string) => `${idPrefix}-${name}`
   const [kind, setKind] = useState<LinkKind>(defaults?.kind ?? "social")
+  const [title, setTitle] = useState(defaults?.title ?? "")
   const showNote = kind === "link"
+
+  const slug = lockedSlug ?? slugify(title)
 
   return (
     <div className="flex flex-col gap-4">
@@ -59,11 +71,19 @@ export function LinkFields({
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={id("title")}>Title</Label>
         <Input
-          defaultValue={defaults?.title}
           id={id("title")}
           name="title"
+          onChange={(event) => setTitle(event.target.value)}
           required
+          value={title}
         />
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <p className="editorial text-neutral-500">Slug</p>
+        <p className="truncate text-sm text-neutral-500">
+          {slug ? publicLinkHref(slug) : "Derived From Title"}
+        </p>
       </div>
 
       <div className="flex flex-col gap-1.5">
@@ -76,18 +96,6 @@ export function LinkFields({
           required
         />
       </div>
-
-      {showSlug ? (
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor={id("slug")}>Slug</Label>
-          <Input
-            defaultValue={defaults?.slug}
-            id={id("slug")}
-            name="slug"
-            placeholder="Derived From Title"
-          />
-        </div>
-      ) : null}
 
       {showNote ? (
         <div className="flex flex-col gap-1.5">

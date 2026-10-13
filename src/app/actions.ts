@@ -13,6 +13,7 @@ import {
   getNextPosition,
   slugExists,
 } from "@/lib/queries"
+import { slugify } from "@/lib/routes"
 import {
   createLinkSchema,
   deleteLinkSchema,
@@ -21,7 +22,6 @@ import {
   moveLinkSchema,
   signInSchema,
   siteSchema,
-  slugify,
   updateLinkSchema,
 } from "@/lib/schemas"
 import { createClient } from "@/lib/supabase/server"
@@ -51,21 +51,14 @@ export async function createLink(
   await requireAdmin()
 
   const parsed = createLinkSchema.safeParse(
-    formDataToRecord(formData, [
-      "title",
-      "url",
-      "slug",
-      "note",
-      "icon",
-      "kind",
-    ]),
+    formDataToRecord(formData, ["title", "url", "note", "icon", "kind"]),
   )
 
   if (!parsed.success) return { error: firstError(parsed.error) }
 
-  const { icon, kind, slug, title, url } = parsed.data
+  const { icon, kind, title, url } = parsed.data
   const note = "note" in parsed.data ? parsed.data.note : null
-  const finalSlug = slugify(slug || title)
+  const finalSlug = slugify(title)
 
   if (!finalSlug) return { error: "Could not derive a slug from that title" }
 

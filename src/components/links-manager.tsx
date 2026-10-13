@@ -131,15 +131,13 @@ function CreateLinkDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-base brand">New Link</DialogTitle>
-          <DialogDescription>
-            Slug Is Derived From The Title Unless You Set One.
-          </DialogDescription>
+          <DialogDescription>Slug Is Derived From The Title.</DialogDescription>
         </DialogHeader>
 
         <form action={action} className="flex flex-col gap-4">
           <FormError state={state} />
 
-          <LinkFields defaults={{ kind: "social" }} idPrefix="new" showSlug />
+          <LinkFields defaults={{ kind: "social" }} idPrefix="new" />
 
           <Button disabled={pending} type="submit">
             {pending ? "Creating..." : "Create Link"}
@@ -235,7 +233,7 @@ function EditLinkDialog({ link }: { link: LinkRow }) {
               url: link.url,
             }}
             idPrefix={link.id}
-            showSlug={false}
+            lockedSlug={link.slug}
           />
 
           <label className="flex items-center gap-2 text-sm">

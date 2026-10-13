@@ -3,15 +3,6 @@ import * as z from "zod"
 import { LINK_KINDS } from "@/config/brand"
 import { isIconKey } from "@/lib/icons"
 
-export function slugify(value: string) {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .slice(0, 60)
-    .replace(/^-+|-+$/g, "")
-}
-
 function isValidUrl(value: string) {
   try {
     new URL(value)
@@ -65,8 +56,8 @@ const linkRowVariant = z.object({
 })
 
 export const createLinkSchema = z.discriminatedUnion("kind", [
-  socialVariant.extend({ slug: z.string().trim() }),
-  linkRowVariant.extend({ slug: z.string().trim() }),
+  socialVariant,
+  linkRowVariant,
 ])
 
 export const updateLinkSchema = z.discriminatedUnion("kind", [
