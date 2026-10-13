@@ -6,10 +6,13 @@ import { getSite } from "@/lib/queries"
 /**
  * Public profile header.
  *
- * The avatar is rendered with `unoptimized` because it is already a 512px
+ * The avatar is rendered with `unoptimized` because it is already a 256px
  * square WebP cut to display size at upload time. The optimizer would add a
  * server round trip that buys nothing and fails outright whenever DNS hands
  * back a private address.
+ *
+ * `fetchPriority` marks it as the LCP element; without it `next/image` defers
+ * the load, which delays the largest paint on the page.
  */
 export async function SiteProfile() {
   const site = await getSite()
@@ -22,7 +25,9 @@ export async function SiteProfile() {
             <Image
               alt={site.displayName}
               className="object-cover"
+              fetchPriority="high"
               fill
+              sizes="80px"
               src={site.avatarUrl}
               unoptimized
             />

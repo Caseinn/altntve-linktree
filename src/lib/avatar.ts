@@ -12,7 +12,7 @@ export const AVATAR_KEY = "site.webp"
 
 const AVATAR_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"]
 const AVATAR_MAX_BYTES = 5 * 1024 * 1024
-const AVATAR_SIZE = 512
+const AVATAR_SIZE = 256
 const WEBP_QUALITY = 82
 
 /**
@@ -65,7 +65,7 @@ export async function removeAvatar() {
  * an hour after a replacement.
  *
  * @param file - Raw upload taken from the admin's form.
- * @returns A cache-busted public URL for the 512px WebP avatar.
+ * @returns A cache-busted public URL for the 256px WebP avatar.
  * @throws {AvatarError} When the MIME type, size, or image data is rejected.
  */
 export async function storeAvatar(file: File): Promise<string> {
