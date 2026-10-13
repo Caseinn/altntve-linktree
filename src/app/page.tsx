@@ -1,5 +1,6 @@
 import { Suspense } from "react"
 
+import { BackgroundPlate } from "@/components/background-plate"
 import { LinkRows } from "@/components/link-rows"
 import { PageShell } from "@/components/page-shell"
 import { SiteProfile } from "@/components/site-profile"
@@ -13,18 +14,22 @@ export async function generateMetadata() {
 
 export default function Page() {
   return (
-    <PageShell>
-      <Suspense fallback={<SiteProfile.Skeleton />}>
-        <SiteProfile />
-      </Suspense>
+    <>
+      <BackgroundPlate />
 
-      <Suspense fallback={<SocialRow.Skeleton />}>
-        <SocialRow />
-      </Suspense>
+      <PageShell>
+        <Suspense fallback={<SiteProfile.Skeleton />}>
+          <SiteProfile />
+        </Suspense>
 
-      <Suspense fallback={null}>
-        <LinkRows />
-      </Suspense>
-    </PageShell>
+        <Suspense fallback={<SocialRow.Skeleton />}>
+          <SocialRow />
+        </Suspense>
+
+        <Suspense fallback={null}>
+          <LinkRows />
+        </Suspense>
+      </PageShell>
+    </>
   )
 }

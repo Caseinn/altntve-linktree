@@ -17,7 +17,7 @@ export async function LinkRows() {
           key={link.id}
         >
           <a
-            className="group flex items-center gap-5 px-6 py-6 transition-colors hover:bg-neutral-100"
+            className="group flex items-center gap-5 px-6 py-6"
             href={publicLinkHref(link.slug)}
             rel="noopener noreferrer"
             target="_blank"
