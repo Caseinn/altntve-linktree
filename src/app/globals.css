@@ -127,6 +127,7 @@
   body {
     @apply bg-background tracking-body text-foreground;
   }
+
   html {
     @apply font-sans;
   }
