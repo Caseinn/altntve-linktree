@@ -1,0 +1,26 @@
+#!/bin/sh
+#
+# Pre-commit: format + lint only the files that are staged.
+# Installed via `git config core.hooksPath .githooks` (see `pnpm hooks:install`).
+
+set -e
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACMR -- \
+  '*.ts' '*.tsx' '*.js' '*.jsx' '*.mjs' '*.cjs' '*.json' '*.css')
+
+if [ -z "$STAGED" ]; then
+  exit 0
+fi
+
+echo "$STAGED" | tr '\n' '\0' | xargs -0 pnpm exec prettier --write --ignore-unknown >/dev/null
+echo "$STAGED" | tr '\n' '\0' | xargs -0 pnpm exec eslint --fix >/dev/null
+
+git add -- $STAGED
+
+if ! echo "$STAGED" | tr '\n' '\0' | xargs -0 pnpm exec eslint --quiet; then
+  echo ""
+  echo "pre-commit failed: ESLint errors above. Fix them, or run 'pnpm lint -- --fix'."
+  exit 1
+fi
+
+exit 0
