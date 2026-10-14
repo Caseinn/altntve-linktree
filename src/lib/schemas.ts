@@ -1,6 +1,6 @@
 import * as z from "zod"
 
-import { LINK_KINDS } from "@/config/brand"
+import { BACKGROUND, LINK_KINDS } from "@/config/brand"
 import { isIconKey } from "@/lib/icons"
 
 function isValidUrl(value: string) {
@@ -75,7 +75,28 @@ export const moveLinkSchema = z.object({
   kind: z.enum(LINK_KINDS, "Unknown kind"),
 })
 
+/**
+ * Defaults on absent input as well as blank, because `formDataToRecord` omits
+ * any key the caller forgot to list and coercing `undefined` would surface as
+ * an unusable "received NaN".
+ */
+const backgroundOpacityField = z.preprocess(
+  (value) =>
+    value === undefined || value === null || value === ""
+      ? BACKGROUND.defaultOpacity
+      : value,
+  z.coerce
+    .number()
+    .int("Background opacity must be a whole number")
+    .min(0, "Background opacity cannot be negative")
+    .max(
+      BACKGROUND.maxOpacity,
+      `Background opacity cannot exceed ${BACKGROUND.maxOpacity}%`,
+    ),
+)
+
 export const siteSchema = z.object({
+  backgroundOpacity: backgroundOpacityField,
   bio: optionalText,
   displayName: requiredText("Display name is required"),
   email: z

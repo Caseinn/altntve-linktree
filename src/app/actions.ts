@@ -8,6 +8,11 @@ import { db, SITE_ID, tables } from "@/db"
 import { isAdminEmail, requireAdmin } from "@/lib/auth"
 import { AvatarError, removeAvatar, storeAvatar } from "@/lib/avatar"
 import {
+  BackgroundError,
+  removeBackground,
+  storeBackground,
+} from "@/lib/background"
+import {
   CACHE_TAGS,
   getLinkIdsByPosition,
   getNextPosition,
@@ -39,6 +44,13 @@ type AvatarChange =
   | { kind: "keep" }
   | { kind: "remove" }
   | { kind: "replace"; url: string }
+
+/** Background intent derived from one profile form submission. */
+type BackgroundChange =
+  | { avifUrl: string; kind: "replace"; webpUrl: string }
+  | { kind: "error"; message: string }
+  | { kind: "keep" }
+  | { kind: "remove" }
 
 /**
  * Saves the single site profile, handling the avatar upload or removal that
@@ -216,8 +228,8 @@ export async function updateLink(
 }
 
 /**
- * Saves the single site profile, applying the avatar upload or removal that
- * came with the same submission.
+ * Saves the single site profile, applying the avatar and background uploads or
+ * removals that came with the same submission.
  */
 export async function updateSite(
   _prev: ActionState,
@@ -232,6 +244,7 @@ export async function updateSite(
       "bio",
       "location",
       "email",
+      "backgroundOpacity",
     ]),
   )
 
@@ -240,8 +253,16 @@ export async function updateSite(
   const change = await resolveAvatar(formData)
   if (change.kind === "error") return { error: change.message }
 
+  const backgroundChange = await resolveBackground(formData)
+  if (backgroundChange.kind === "error")
+    return { error: backgroundChange.message }
+
   const [current] = await db
-    .select({ avatarUrl: tables.site.avatarUrl })
+    .select({
+      avatarUrl: tables.site.avatarUrl,
+      backgroundAvifUrl: tables.site.backgroundAvifUrl,
+      backgroundWebpUrl: tables.site.backgroundWebpUrl,
+    })
     .from(tables.site)
     .where(eq(tables.site.id, SITE_ID))
     .limit(1)
@@ -253,7 +274,22 @@ export async function updateSite(
         ? null
         : (current?.avatarUrl ?? null)
 
-  const values = { ...parsed.data, avatarUrl }
+  const background =
+    backgroundChange.kind === "remove"
+      ? { avifUrl: null, webpUrl: null }
+      : backgroundChange.kind === "replace"
+        ? backgroundChange
+        : {
+            avifUrl: current?.backgroundAvifUrl ?? null,
+            webpUrl: current?.backgroundWebpUrl ?? null,
+          }
+
+  const values = {
+    ...parsed.data,
+    avatarUrl,
+    backgroundAvifUrl: background.avifUrl,
+    backgroundWebpUrl: background.webpUrl,
+  }
 
   await db
     .insert(tables.site)
@@ -299,6 +335,42 @@ async function resolveAvatar(formData: FormData): Promise<AvatarChange> {
 
   if (formData.get("removeAvatar") === "on") {
     await removeAvatar()
+    return { kind: "remove" }
+  }
+
+  return { kind: "keep" }
+}
+
+/**
+ * Works out what should happen to the stored background for this submission.
+ *
+ * Mirrors `resolveAvatar`: a freshly picked file wins over a checked "remove"
+ * box, so a stale checkbox can never silently discard a new upload. Opacity is
+ * not part of this because it is an ordinary always-submitted field rather than
+ * an intent, and `siteSchema` clamps it.
+ *
+ * @param formData - Raw submission from the profile form.
+ * @returns The background change to persist, or a message to show the admin.
+ */
+async function resolveBackground(
+  formData: FormData,
+): Promise<BackgroundChange> {
+  const file = formData.get("background")
+
+  if (file instanceof File && file.size > 0) {
+    try {
+      const { avifUrl, webpUrl } = await storeBackground(file)
+      return { avifUrl, kind: "replace", webpUrl }
+    } catch (error) {
+      if (error instanceof BackgroundError) {
+        return { kind: "error", message: error.message }
+      }
+      throw error
+    }
+  }
+
+  if (formData.get("removeBackground") === "on") {
+    await removeBackground()
     return { kind: "remove" }
   }
 

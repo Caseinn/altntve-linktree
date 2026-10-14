@@ -18,7 +18,11 @@ export default async function Page() {
 
   return (
     <>
-      <BackgroundPlate />
+      <BackgroundPlate
+        avifUrl={site.backgroundAvifUrl}
+        opacity={site.backgroundOpacity}
+        webpUrl={site.backgroundWebpUrl}
+      />
 
       <PageShell>
         <Suspense fallback={<SiteProfile.Skeleton />}>
