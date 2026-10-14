@@ -134,7 +134,9 @@ async function putObject(
       upsert: true,
     })
 
-  if (error) throw new AvatarError("Could not save the image. Try again.")
+  if (error) {
+    throw new AvatarError(`Could not save the image: ${error.message}`)
+  }
 }
 
 function square(image: Sharp, size: number) {
