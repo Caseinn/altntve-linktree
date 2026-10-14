@@ -2,7 +2,7 @@ import "server-only"
 import { and, count, desc, eq } from "drizzle-orm"
 import { cacheLife, cacheTag } from "next/cache"
 
-import { BRAND, type LinkKind } from "@/config/brand"
+import { BACKGROUND, BRAND, type LinkKind } from "@/config/brand"
 import { db, SITE_ID, tables } from "@/db"
 
 export const CACHE_TAGS = {
@@ -24,6 +24,9 @@ export async function getSite() {
   return (
     rows[0] ?? {
       avatarUrl: null,
+      backgroundAvifUrl: null,
+      backgroundOpacity: BACKGROUND.defaultOpacity,
+      backgroundWebpUrl: null,
       bio: null,
       displayName: BRAND.name,
       email: null,

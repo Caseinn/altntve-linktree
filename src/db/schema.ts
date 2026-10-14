@@ -22,6 +22,9 @@ export const SITE_ID = "00000000-0000-0000-0000-000000000001"
 
 export const site = pgTable("site", {
   avatarUrl: text("avatar_url"),
+  backgroundAvifUrl: text("background_avif_url"),
+  backgroundOpacity: integer("background_opacity").notNull().default(50),
+  backgroundWebpUrl: text("background_webp_url"),
   bio: text("bio"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()

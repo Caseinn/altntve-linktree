@@ -83,13 +83,11 @@ const nextConfig: NextConfig = {
         protocol: "https",
       },
       ...(supabaseHost
-        ? [
-            {
-              hostname: supabaseHost,
-              pathname: "/storage/v1/object/public/avatar/**",
-              protocol: "https" as const,
-            },
-          ]
+        ? ["avatar", "background"].map((bucket) => ({
+            hostname: supabaseHost,
+            pathname: `/storage/v1/object/public/${bucket}/**`,
+            protocol: "https" as const,
+          }))
         : []),
     ],
   },
