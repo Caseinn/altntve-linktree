@@ -26,6 +26,9 @@ async function ProfileEditor() {
     <SiteForm
       defaults={{
         avatarUrl: site.avatarUrl ?? "",
+        backgroundAvifUrl: site.backgroundAvifUrl ?? "",
+        backgroundOpacity: site.backgroundOpacity,
+        backgroundWebpUrl: site.backgroundWebpUrl ?? "",
         bio: site.bio ?? "",
         displayName: site.displayName,
         email: site.email ?? "",
