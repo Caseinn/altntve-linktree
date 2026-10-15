@@ -12,8 +12,6 @@ const imgSrc = [
   "'self'",
   "blob:",
   "data:",
-  "https://avatars.githubusercontent.com",
-  "https://*.fbcdn.net",
   ...(supabaseHost ? [`https://${supabaseHost}`] : []),
 ]
 
@@ -77,19 +75,16 @@ const nextConfig: NextConfig = {
   },
 
   images: {
-    remotePatterns: [
-      {
-        hostname: "**.fbcdn.net",
-        protocol: "https",
-      },
-      ...(supabaseHost
-        ? ["avatar", "background"].map((bucket) => ({
-            hostname: supabaseHost,
-            pathname: `/storage/v1/object/public/${bucket}/**`,
-            protocol: "https" as const,
-          }))
-        : []),
-    ],
+    // Every `next/image` in the app opts into `unoptimized`, so these patterns
+    // are inert today. They document which buckets may become optimizable and
+    // keep that change from silently needing a config edit.
+    remotePatterns: supabaseHost
+      ? ["avatar", "background"].map((bucket) => ({
+          hostname: supabaseHost,
+          pathname: `/storage/v1/object/public/${bucket}/**`,
+          protocol: "https" as const,
+        }))
+      : [],
   },
 
   partialPrefetching: true,

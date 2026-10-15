@@ -1,18 +1,32 @@
+/** What the page offers to share about itself. */
 export type ShareContent = {
   text: string
   title: string
   url: string
 }
 
+/**
+ * One row in the share sheet.
+ *
+ * `href` is null for the copy action, which is a button rather than a link, so
+ * the caller can pick the element without a second lookup.
+ */
 export type ShareTarget = {
   href: null | string
   id: ShareTargetId
   label: string
 }
 
+/** A row in the share sheet, narrowing to its icon lookup. */
 export type ShareTargetId =
   "copy" | "email" | "linkedin" | "reddit" | "telegram" | "whatsapp" | "x"
 
+/**
+ * Builds the share rows for one page.
+ *
+ * @param content - Page title, text, and the URL being shared.
+ * @returns One entry per target, in display order.
+ */
 export function buildShareTargets({ text, title, url }: ShareContent) {
   const query = `text=${encodeURIComponent(text)}`
   const target = `url=${encodeURIComponent(url)}`
@@ -50,8 +64,4 @@ export function buildShareTargets({ text, title, url }: ShareContent) {
       label: "Reddit",
     },
   ] satisfies ShareTarget[]
-}
-
-export function shareSummary({ text, title }: ShareContent) {
-  return text ? `${title} — ${text}` : title
 }
