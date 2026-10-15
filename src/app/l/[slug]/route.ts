@@ -2,10 +2,16 @@ import { after, type NextRequest, NextResponse } from "next/server"
 
 import { db, tables } from "@/db"
 import { getLinkBySlug } from "@/lib/queries"
+import { ALLOWED_LINK_PROTOCOLS } from "@/lib/url"
 
-const ALLOWED_PROTOCOLS = new Set(["http:", "https:", "mailto:"])
 const NOT_FOUND_STATUS = 404
 
+/**
+ * Redirects a slug to its target and records the click.
+ *
+ * The click insert runs in `after`, so a storage or network hiccup there cannot
+ * cost the visitor their redirect.
+ */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> },
@@ -56,7 +62,7 @@ export async function GET(
 function resolveTarget(url: string, origin: string) {
   const target = new URL(url, origin)
 
-  if (!ALLOWED_PROTOCOLS.has(target.protocol)) {
+  if (!ALLOWED_LINK_PROTOCOLS.has(target.protocol)) {
     throw new Error(`Unsupported link protocol: ${target.protocol}`)
   }
 
