@@ -3,19 +3,26 @@ import sharp from "sharp"
 
 import { BACKGROUND } from "@/config/brand"
 import { createClient } from "@/lib/supabase/server"
+import {
+  assertUploadable,
+  cacheBust,
+  putObject,
+  UploadError,
+} from "@/lib/upload"
 
+/**
+ * Object keys the background pipeline owns, one per delivered format.
+ *
+ * Fixed so each upload replaces the last one; the stored URLs carry a `?v=` stamp
+ * to defeat CDN caching on top of that.
+ */
 export const BACKGROUND_AVIF_KEY = "background.avif"
 export const BACKGROUND_BUCKET = "background"
 export const BACKGROUND_WEBP_KEY = "background.webp"
 
-const BACKGROUND_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"]
-const BACKGROUND_MAX_BYTES = 5 * 1024 * 1024
 const AVIF_EFFORT = 3
 const AVIF_QUALITY = 55
 const WEBP_QUALITY = 78
-
-/** Every rejection an upload can produce, so callers can tell a validation failure from a fault. */
-export class BackgroundError extends Error {}
 
 /** Deletes the stored background objects. */
 export async function removeBackground() {
@@ -29,30 +36,33 @@ export async function removeBackground() {
 /**
  * Re-encodes an upload into the AVIF/WebP pair the plate renders.
  *
- * Uploads are cropped to the plate's ratio here rather than rejected, and the
- * query stamp on the returned URLs is needed because the object keys are fixed
- * and the CDN would otherwise serve the previous upload.
+ * Uploads are cropped to the plate's ratio here rather than rejected.
  *
  * @param file - Raw upload from the admin's form.
  * @returns Cache-busted public URLs for both formats.
- * @throws {BackgroundError} When the MIME type, size, or image data is rejected.
+ * @throws {UploadError} When the MIME type, size, or image data is rejected.
  */
 export async function storeBackground(file: File) {
-  if (!BACKGROUND_MIME_TYPES.includes(file.type)) {
-    throw new BackgroundError("Background must be a JPEG, PNG, or WebP image")
-  }
-
-  if (file.size > BACKGROUND_MAX_BYTES) {
-    throw new BackgroundError("Background must be smaller than 5 MB")
-  }
+  assertUploadable(file, "Background")
 
   const variants = await encodeBackground(Buffer.from(await file.arrayBuffer()))
-  const supabase = await createClient()
-  const bucket = supabase.storage.from(BACKGROUND_BUCKET)
+  const bucket = (await createClient()).storage.from(BACKGROUND_BUCKET)
 
   await Promise.all([
-    putObject(bucket, BACKGROUND_AVIF_KEY, variants.avif, "image/avif"),
-    putObject(bucket, BACKGROUND_WEBP_KEY, variants.webp, "image/webp"),
+    putObject(
+      bucket,
+      BACKGROUND_AVIF_KEY,
+      variants.avif,
+      "image/avif",
+      "background",
+    ),
+    putObject(
+      bucket,
+      BACKGROUND_WEBP_KEY,
+      variants.webp,
+      "image/webp",
+      "background",
+    ),
   ])
 
   const stamp = Date.now()
@@ -69,14 +79,10 @@ export async function storeBackground(file: File) {
   }
 }
 
-function cacheBust(url: string, stamp: number) {
-  return `${url}?v=${stamp}`
-}
-
 /**
  * @param input - Untrusted bytes from the browser.
  * @returns The AVIF primary and its WebP fallback, both at the plate's ratio.
- * @throws {BackgroundError} When the bytes cannot be decoded.
+ * @throws {UploadError} When the bytes cannot be decoded.
  */
 async function encodeBackground(input: Buffer) {
   const source = sharp(input).rotate()
@@ -94,25 +100,6 @@ async function encodeBackground(input: Buffer) {
 
     return { avif, webp }
   } catch {
-    throw new BackgroundError("That file could not be read as an image")
-  }
-}
-
-async function putObject(
-  bucket: ReturnType<
-    Awaited<ReturnType<typeof createClient>>["storage"]["from"]
-  >,
-  key: string,
-  body: Buffer,
-  contentType: string,
-) {
-  const { error } = await bucket.upload(key, body, {
-    cacheControl: "31536000",
-    contentType,
-    upsert: true,
-  })
-
-  if (error) {
-    throw new BackgroundError(`Could not save the background: ${error.message}`)
+    throw new UploadError("That file could not be read as an image")
   }
 }

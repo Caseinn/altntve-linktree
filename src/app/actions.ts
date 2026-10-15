@@ -4,14 +4,10 @@ import { eq } from "drizzle-orm"
 import { revalidatePath, updateTag } from "next/cache"
 import { redirect } from "next/navigation"
 
-import { db, SITE_ID, tables } from "@/db"
+import { db, isUniqueViolation, SITE_ID, tables } from "@/db"
 import { isAdminEmail, requireAdmin } from "@/lib/auth"
-import { AvatarError, removeAvatar, storeAvatar } from "@/lib/avatar"
-import {
-  BackgroundError,
-  removeBackground,
-  storeBackground,
-} from "@/lib/background"
+import { removeAvatar, storeAvatar } from "@/lib/avatar"
+import { removeBackground, storeBackground } from "@/lib/background"
 import {
   CACHE_TAGS,
   getLinkIdsByPosition,
@@ -30,7 +26,9 @@ import {
   updateLinkSchema,
 } from "@/lib/schemas"
 import { createClient } from "@/lib/supabase/server"
+import { assertUploadable, UploadError } from "@/lib/upload"
 
+/** Result shape every action returns, for `useActionState`. */
 export type ActionState = {
   error?: string
   saved?: boolean
@@ -38,23 +36,59 @@ export type ActionState = {
 
 const OK: ActionState = { saved: true }
 
-/** Avatar intent derived from one profile form submission. */
-type AvatarChange =
-  | { kind: "error"; message: string }
-  | { kind: "keep" }
-  | { kind: "remove" }
-  | { kind: "replace"; url: string }
+type BackgroundUrls = { avifUrl: string; webpUrl: string }
 
-/** Background intent derived from one profile form submission. */
-type BackgroundChange =
-  | { avifUrl: string; kind: "replace"; webpUrl: string }
+/** Intent derived from one image field in a profile submission. */
+type ImageChange<T> =
   | { kind: "error"; message: string }
   | { kind: "keep" }
   | { kind: "remove" }
+  | { kind: "replace"; value: T }
+
+/** One file field and the checkbox that retires it. */
+type ImageField<T> = {
+  /** Form field carrying the new file. */
+  field: string
+  /** Removes whatever is currently stored. */
+  remove: () => Promise<void>
+  /** Checkbox field carrying the removal intent. */
+  removeFlag: string
+  /** Re-encodes and stores a picked file, returning what the site row should hold. */
+  upload: (file: File) => Promise<T>
+}
+
+const AVATAR_FIELD: ImageField<string> = {
+  field: "avatar",
+  remove: removeAvatar,
+  removeFlag: "removeAvatar",
+  upload: storeAvatar,
+}
+
+const BACKGROUND_FIELD: ImageField<BackgroundUrls> = {
+  field: "background",
+  remove: removeBackground,
+  removeFlag: "removeBackground",
+  upload: storeBackground,
+}
 
 /**
- * Saves the single site profile, handling the avatar upload or removal that
- * came with the same submission.
+ * Every file the profile form can carry, screened before anything is written.
+ *
+ * `updateSite` stores the avatar and the background from one submission, and
+ * each store call upserts over a fixed object key. Validating up front means a
+ * bad file in the second field cannot strand the first field's bytes in the
+ * bucket, or replace the live object behind a row that never got updated.
+ */
+const UPLOAD_FIELDS = [
+  { field: "avatar", label: "Avatar" },
+  { field: "background", label: "Background" },
+] as const
+
+/**
+ * Adds a link, deriving its slug from the title.
+ *
+ * The slug is fixed at creation and never rewritten, so the check and the insert
+ * cannot both be trusted: `links_slug_key` is the real arbiter.
  */
 export async function createLink(
   _prev: ActionState,
@@ -74,24 +108,32 @@ export async function createLink(
 
   if (!finalSlug) return { error: "Could not derive a slug from that title" }
 
+  const slugTaken = `Slug "${finalSlug}" is already taken`
+
   if (await slugExists(finalSlug)) {
-    return { error: `Slug "${finalSlug}" is already taken` }
+    return { error: slugTaken }
   }
 
-  await db.insert(tables.links).values({
-    icon,
-    kind,
-    note: kind === "link" ? note : null,
-    position: await getNextPosition(kind),
-    slug: finalSlug,
-    title,
-    url,
-  })
+  try {
+    await db.insert(tables.links).values({
+      icon,
+      kind,
+      note: kind === "link" ? note : null,
+      position: await getNextPosition(kind),
+      slug: finalSlug,
+      title,
+      url,
+    })
+  } catch (error) {
+    if (isUniqueViolation(error)) return { error: slugTaken }
+    throw error
+  }
 
   invalidateLinks()
   return OK
 }
 
+/** Removes a link; its click history cascades away with it. */
 export async function deleteLink(
   _prev: ActionState,
   formData: FormData,
@@ -107,6 +149,7 @@ export async function deleteLink(
   return OK
 }
 
+/** Swaps a link's position with its neighbour in the same kind. */
 export async function moveLink(
   _prev: ActionState,
   formData: FormData,
@@ -145,6 +188,12 @@ export async function moveLink(
   return OK
 }
 
+/**
+ * Signs in with a password, then signs out again unless the address is an admin.
+ *
+ * Signing out rather than erroring keeps a valid non-admin session from lingering
+ * on a page that will only reject it.
+ */
 export async function signIn(
   _prev: ActionState,
   formData: FormData,
@@ -172,12 +221,19 @@ export async function signIn(
   redirect("/dashboard")
 }
 
+/** Ends the session and returns to the login page. */
 export async function signOut() {
   const supabase = await createClient()
   await supabase.auth.signOut()
   redirect("/login")
 }
 
+/**
+ * Edits a link in place.
+ *
+ * Changing `kind` moves the link to the end of its new group, because positions
+ * are only ever compared within one kind.
+ */
 export async function updateLink(
   _prev: ActionState,
   formData: FormData,
@@ -230,6 +286,9 @@ export async function updateLink(
 /**
  * Saves the single site profile, applying the avatar and background uploads or
  * removals that came with the same submission.
+ *
+ * Upserts so the profile works before the row has ever been created, since it is
+ * seeded from `BRAND` defaults rather than by a migration.
  */
 export async function updateSite(
   _prev: ActionState,
@@ -250,10 +309,22 @@ export async function updateSite(
 
   if (!parsed.success) return { error: firstError(parsed.error) }
 
-  const change = await resolveAvatar(formData)
+  for (const { field, label } of UPLOAD_FIELDS) {
+    const file = formData.get(field)
+    if (!(file instanceof File) || file.size === 0) continue
+
+    try {
+      assertUploadable(file, label)
+    } catch (error) {
+      if (error instanceof UploadError) return { error: error.message }
+      throw error
+    }
+  }
+
+  const change = await resolveImageChange(formData, AVATAR_FIELD)
   if (change.kind === "error") return { error: change.message }
 
-  const backgroundChange = await resolveBackground(formData)
+  const backgroundChange = await resolveImageChange(formData, BACKGROUND_FIELD)
   if (backgroundChange.kind === "error")
     return { error: backgroundChange.message }
 
@@ -269,7 +340,7 @@ export async function updateSite(
 
   const avatarUrl =
     change.kind === "replace"
-      ? change.url
+      ? change.value
       : change.kind === "remove"
         ? null
         : (current?.avatarUrl ?? null)
@@ -278,7 +349,7 @@ export async function updateSite(
     backgroundChange.kind === "remove"
       ? { avifUrl: null, webpUrl: null }
       : backgroundChange.kind === "replace"
-        ? backgroundChange
+        ? backgroundChange.value
         : {
             avifUrl: current?.backgroundAvifUrl ?? null,
             webpUrl: current?.backgroundWebpUrl ?? null,
@@ -311,66 +382,35 @@ function invalidateSite() {
 }
 
 /**
- * Works out what should happen to the stored avatar for this submission.
+ * Works out what should happen to one stored image for this submission.
  *
  * A freshly picked file wins over a checked "remove" box, so a stale checkbox
  * can never silently discard an upload the admin just made.
  *
  * @param formData - Raw submission from the profile form.
- * @returns The avatar change to persist, or a message to show the admin.
+ * @param config - The field and checkbox that drive this image.
+ * @returns The change to persist, or a message to show the admin.
+ * @throws Anything that is not an `UploadError`; that is an unexpected fault.
  */
-async function resolveAvatar(formData: FormData): Promise<AvatarChange> {
-  const file = formData.get("avatar")
-
-  if (file instanceof File && file.size > 0) {
-    try {
-      return { kind: "replace", url: await storeAvatar(file) }
-    } catch (error) {
-      if (error instanceof AvatarError) {
-        return { kind: "error", message: error.message }
-      }
-      throw error
-    }
-  }
-
-  if (formData.get("removeAvatar") === "on") {
-    await removeAvatar()
-    return { kind: "remove" }
-  }
-
-  return { kind: "keep" }
-}
-
-/**
- * Works out what should happen to the stored background for this submission.
- *
- * Mirrors `resolveAvatar`: a freshly picked file wins over a checked "remove"
- * box, so a stale checkbox can never silently discard a new upload. Opacity is
- * not part of this because it is an ordinary always-submitted field rather than
- * an intent, and `siteSchema` clamps it.
- *
- * @param formData - Raw submission from the profile form.
- * @returns The background change to persist, or a message to show the admin.
- */
-async function resolveBackground(
+async function resolveImageChange<T>(
   formData: FormData,
-): Promise<BackgroundChange> {
-  const file = formData.get("background")
+  { field, remove, removeFlag, upload }: ImageField<T>,
+): Promise<ImageChange<T>> {
+  const file = formData.get(field)
 
   if (file instanceof File && file.size > 0) {
     try {
-      const { avifUrl, webpUrl } = await storeBackground(file)
-      return { avifUrl, kind: "replace", webpUrl }
+      return { kind: "replace", value: await upload(file) }
     } catch (error) {
-      if (error instanceof BackgroundError) {
+      if (error instanceof UploadError) {
         return { kind: "error", message: error.message }
       }
       throw error
     }
   }
 
-  if (formData.get("removeBackground") === "on") {
-    await removeBackground()
+  if (formData.get(removeFlag) === "on") {
+    await remove()
     return { kind: "remove" }
   }
 

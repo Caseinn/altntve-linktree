@@ -38,6 +38,13 @@ function intFromEnv(name: string, fallback: number) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
 }
 
+/**
+ * Drizzle handle over a lazily created pool.
+ *
+ * Proxied so importing this module never opens a connection: a build or a
+ * `robots.txt` request should not fail because `DATABASE_URL` is unset and no
+ * query is ever issued.
+ */
 export const db: DrizzleDb = new Proxy({} as DrizzleDb, {
   get(_target, property, receiver) {
     return Reflect.get(getDb(), property, receiver)
@@ -46,3 +53,22 @@ export const db: DrizzleDb = new Proxy({} as DrizzleDb, {
 
 export * as tables from "./schema"
 export { SITE_ID } from "./schema"
+
+/** Postgres SQLSTATE for a unique constraint violation. */
+const UNIQUE_VIOLATION = "23505"
+
+/**
+ * Reports whether a failed write lost a race against a unique index.
+ *
+ * A separate `slugExists` check cannot be atomic with the insert that follows it,
+ * so the constraint is the real arbiter and its error is what needs translating
+ * into something an admin can read.
+ */
+export function isUniqueViolation(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === UNIQUE_VIOLATION
+  )
+}

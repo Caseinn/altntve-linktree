@@ -4,22 +4,26 @@ import sharp, { type Sharp } from "sharp"
 
 import { getSupabaseEnv } from "@/lib/env"
 import { createClient } from "@/lib/supabase/server"
+import {
+  assertUploadable,
+  cacheBust,
+  putObject,
+  UploadError,
+} from "@/lib/upload"
 
+/**
+ * Object keys the avatar pipeline owns.
+ *
+ * Fixed so each upload replaces the last one rather than accumulating objects;
+ * the stored URLs carry a `?v=` stamp to defeat CDN caching on top of that.
+ */
 export const AVATAR_APPLE_KEY = "site-apple.png"
 export const AVATAR_BUCKET = "avatar"
 export const AVATAR_ICON_KEY = "site-icon.png"
 export const AVATAR_KEY = "site.webp"
 
-const AVATAR_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"]
-const AVATAR_MAX_BYTES = 5 * 1024 * 1024
 const AVATAR_SIZE = 256
 const WEBP_QUALITY = 82
-
-/**
- * Thrown for every rejection an avatar upload can produce, so callers can tell
- * a user-facing validation failure apart from an unexpected fault.
- */
-export class AvatarError extends Error {}
 
 /**
  * Reads a stored avatar object.
@@ -60,35 +64,27 @@ export async function removeAvatar() {
  * Re-encodes an uploaded file into the three objects the site renders, and
  * returns the public URL of the main one.
  *
- * The returned URL carries a cache-busting query because the object keys are
- * fixed, so the CDN would otherwise keep serving the previous upload for up to
- * an hour after a replacement.
+ * The main object is written before the two icon variants so a mid-flight failure
+ * leaves the previous icons paired with the new main image, which is less jarring
+ * than a stale main image behind fresh icons.
  *
  * @param file - Raw upload taken from the admin's form.
  * @returns A cache-busted public URL for the 256px WebP avatar.
- * @throws {AvatarError} When the MIME type, size, or image data is rejected.
+ * @throws {UploadError} When the MIME type, size, or image data is rejected.
  */
 export async function storeAvatar(file: File): Promise<string> {
-  if (!AVATAR_MIME_TYPES.includes(file.type)) {
-    throw new AvatarError("Avatar must be a JPEG, PNG, or WebP image")
-  }
-
-  if (file.size > AVATAR_MAX_BYTES) {
-    throw new AvatarError("Avatar must be smaller than 5 MB")
-  }
+  assertUploadable(file, "Avatar")
 
   const variants = await encodeAvatar(Buffer.from(await file.arrayBuffer()))
+  const bucket = (await createClient()).storage.from(AVATAR_BUCKET)
 
-  const supabase = await createClient()
-  await putObject(supabase, AVATAR_KEY, variants.main, "image/webp")
+  await putObject(bucket, AVATAR_KEY, variants.main, "image/webp", "image")
   await Promise.all([
-    putObject(supabase, AVATAR_ICON_KEY, variants.icon, "image/png"),
-    putObject(supabase, AVATAR_APPLE_KEY, variants.apple, "image/png"),
+    putObject(bucket, AVATAR_ICON_KEY, variants.icon, "image/png", "image"),
+    putObject(bucket, AVATAR_APPLE_KEY, variants.apple, "image/png", "image"),
   ])
 
-  const { data } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(AVATAR_KEY)
-
-  return `${data.publicUrl}?v=${Date.now()}`
+  return cacheBust(bucket.getPublicUrl(AVATAR_KEY).data.publicUrl, Date.now())
 }
 
 /**
@@ -100,7 +96,7 @@ export async function storeAvatar(file: File): Promise<string> {
  *
  * @param input - Untrusted bytes straight from the browser.
  * @returns The main WebP plus the favicon and Apple touch-icon PNGs.
- * @throws {AvatarError} When the bytes cannot be decoded as an image.
+ * @throws {UploadError} When the bytes cannot be decoded as an image.
  */
 async function encodeAvatar(input: Buffer) {
   const source = sharp(input).rotate()
@@ -116,26 +112,7 @@ async function encodeAvatar(input: Buffer) {
 
     return { apple, icon, main }
   } catch {
-    throw new AvatarError("That file could not be read as an image")
-  }
-}
-
-async function putObject(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  key: string,
-  body: Buffer,
-  contentType: string,
-) {
-  const { error } = await supabase.storage
-    .from(AVATAR_BUCKET)
-    .upload(key, body, {
-      cacheControl: "31536000",
-      contentType,
-      upsert: true,
-    })
-
-  if (error) {
-    throw new AvatarError(`Could not save the image: ${error.message}`)
+    throw new UploadError("That file could not be read as an image")
   }
 }
 
