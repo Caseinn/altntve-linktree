@@ -4,6 +4,7 @@ import { LinkIcon } from "@/components/link-icon"
 import { getLinkRows } from "@/lib/queries"
 import { publicLinkHref } from "@/lib/routes"
 
+/** Visible link rows on the public page; nothing at all when there are none. */
 export async function LinkRows() {
   const links = await getLinkRows()
 

@@ -1,5 +1,10 @@
 import { SiteFooter } from "@/components/site-footer"
 
+/**
+ * Centred content column with an optional header and the shared footer.
+ *
+ * @param props - Optional header above the content.
+ */
 export function PageShell({
   children,
   header,

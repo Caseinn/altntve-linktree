@@ -89,6 +89,7 @@ function mapUrl(location: string) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`
 }
 
+/** Placeholder for `SiteProfile`, matching its avatar and heading footprint. */
 SiteProfile.Skeleton = function SiteProfileSkeleton() {
   return (
     <header className="flex flex-col gap-6">

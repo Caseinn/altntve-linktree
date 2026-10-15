@@ -18,8 +18,15 @@ const updatedAt = () =>
     .defaultNow()
     .$onUpdate(() => new Date())
 
+/**
+ * Fixed id of the one profile row.
+ *
+ * A constant rather than a generated uuid so the public page and every action
+ * can address the profile without first looking it up.
+ */
 export const SITE_ID = "00000000-0000-0000-0000-000000000001"
 
+/** The single site profile. */
 export const site = pgTable("site", {
   avatarUrl: text("avatar_url"),
   backgroundAvifUrl: text("background_avif_url"),
@@ -37,6 +44,7 @@ export const site = pgTable("site", {
   updatedAt: updatedAt(),
 })
 
+/** Links, ordered within each kind by `position`. */
 export const links = pgTable(
   "links",
   {
@@ -63,6 +71,7 @@ export const links = pgTable(
   ],
 )
 
+/** One row per redirect served, cascading away with its link. */
 export const clicks = pgTable(
   "clicks",
   {

@@ -7,6 +7,12 @@ import { FormError } from "@/components/form-error"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
+/**
+ * Email and password fields posting to the `signIn` action.
+ *
+ * Client-side only because the action runs over `useActionState`; the email
+ * allow-list is enforced on the server.
+ */
 export function LoginForm() {
   const [state, formAction, pending] = useActionState<ActionState, FormData>(
     signIn,

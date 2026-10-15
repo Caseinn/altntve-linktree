@@ -4,6 +4,7 @@ import { Emblem } from "@/components/emblem"
 import { Wordmark } from "@/components/wordmark"
 import { ROUTES } from "@/lib/routes"
 
+/** Emblem and wordmark linked home, for pages outside the dashboard. */
 export function BrandHeader() {
   return (
     <header className="flex items-center gap-2.5">

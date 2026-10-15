@@ -5,11 +5,18 @@ import { cacheLife, cacheTag } from "next/cache"
 import { BACKGROUND, BRAND, type LinkKind } from "@/config/brand"
 import { db, SITE_ID, tables } from "@/db"
 
+/** Cache tags shared by every query and by the actions that invalidate them. */
 export const CACHE_TAGS = {
   links: "links",
   site: "site",
 } as const
 
+/**
+ * Reads the single site profile.
+ *
+ * Falls back to brand defaults when the row does not exist yet, so the public
+ * page renders before anyone has ever opened the dashboard.
+ */
 export async function getSite() {
   "use cache"
   cacheLife("hours")
@@ -57,9 +64,17 @@ async function getLinksByKind(kind: LinkKind) {
     .orderBy(tables.links.position)
 }
 
+/** Visible social links, for the icon row on the public page. */
 export const getSocialLinks = () => getLinksByKind("social")
+
+/** Visible link rows, for the list on the public page. */
 export const getLinkRows = () => getLinksByKind("link")
 
+/**
+ * Every link with its click count, for the dashboard.
+ *
+ * Includes hidden links because the dashboard has to be able to unhide them.
+ */
 export async function getAllLinks() {
   "use cache"
   cacheLife("max")
@@ -84,6 +99,15 @@ export async function getAllLinks() {
     .orderBy(tables.links.kind, tables.links.position)
 }
 
+/**
+ * Reads one link for the redirect handler.
+ *
+ * Deliberately uncached: the route records a click on every hit and must never
+ * serve a stale `isVisible`.
+ *
+ * @param slug - Slug from the request path.
+ * @returns The link, or `null` when no slug matches.
+ */
 export async function getLinkBySlug(slug: string) {
   const rows = await db
     .select({
@@ -98,6 +122,12 @@ export async function getLinkBySlug(slug: string) {
   return rows[0] ?? null
 }
 
+/**
+ * Ordered ids and positions for one kind, hidden links included.
+ *
+ * The reorder action swaps against this list, so it must match the order the
+ * dashboard renders.
+ */
 export async function getLinkIdsByPosition(kind: LinkKind) {
   return db
     .select({ id: tables.links.id, position: tables.links.position })
@@ -106,6 +136,7 @@ export async function getLinkIdsByPosition(kind: LinkKind) {
     .orderBy(tables.links.position)
 }
 
+/** Next free position within one kind, so a new link lands last. */
 export async function getNextPosition(kind: LinkKind) {
   const rows = await db
     .select({ position: tables.links.position })
@@ -117,6 +148,11 @@ export async function getNextPosition(kind: LinkKind) {
   return (rows[0]?.position ?? -1) + 1
 }
 
+/**
+ * Whether a slug is already taken.
+ *
+ * Advisory only: the unique index is what actually prevents a collision.
+ */
 export async function slugExists(slug: string) {
   const rows = await db
     .select({ id: tables.links.id })

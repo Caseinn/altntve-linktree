@@ -8,6 +8,11 @@ import {
   isIconKey,
 } from "@/lib/icons"
 
+/**
+ * Radio grid for a link's icon, with `none` as an explicit choice.
+ *
+ * @param props - Current code and the id prefix keeping its inputs unique.
+ */
 export function IconPicker({
   defaultValue,
   id,

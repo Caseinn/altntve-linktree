@@ -45,6 +45,12 @@ import { WhatsappLogo } from "@phosphor-icons/react/dist/ssr/WhatsappLogo"
 import { XLogo } from "@phosphor-icons/react/dist/ssr/XLogo"
 import { YoutubeLogo } from "@phosphor-icons/react/dist/ssr/YoutubeLogo"
 
+/**
+ * Icon components keyed by the short code stored on a link.
+ *
+ * `none` is a real entry so a cleared icon round-trips as an explicit choice
+ * rather than an absent field.
+ */
 export const ICON_REGISTRY = {
   arrow: ArrowUpRight,
   audio: SpeakerHigh,
@@ -95,19 +101,31 @@ export const ICON_REGISTRY = {
   youtube: YoutubeLogo,
 } as const
 
+/** A code that {@link ICON_REGISTRY} can resolve. */
 export type IconKey = keyof typeof ICON_REGISTRY
 
+/** Registry keys in display order. */
 export const ICON_KEYS = Object.keys(ICON_REGISTRY) as IconKey[]
 
+/**
+ * Resolves a stored icon code to its component.
+ *
+ * Returns null for an unknown code so a link saved before an icon was removed
+ * from the registry still renders.
+ *
+ * @param key - Stored icon code, or null when the link has no icon.
+ */
 export function getIcon(key: null | string | undefined) {
   if (!key) return null
   return isIconKey(key) ? ICON_REGISTRY[key] : null
 }
 
+/** Narrows an untrusted string to a registry key. */
 export function isIconKey(value: string): value is IconKey {
   return value in ICON_REGISTRY
 }
 
+/** Human-readable name per key, for the picker and its tooltips. */
 export const ICON_LABELS: Record<IconKey, string> = {
   arrow: "Arrow",
   audio: "Audio",

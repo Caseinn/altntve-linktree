@@ -6,6 +6,7 @@ export const alt = "ALTNTVE"
 export const size = { height: 630, width: 1200 }
 export const contentType = "image/png"
 
+/** Open Graph card rendering the emblem, display name, and tagline. */
 export default async function OpengraphImage() {
   const site = await getSite()
 

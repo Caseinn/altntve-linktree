@@ -10,6 +10,11 @@ const NAV = [
   { href: ROUTES.dashboardLinks, label: "Links" },
 ] as const
 
+/**
+ * Dashboard section links, marking the current one for assistive tech.
+ *
+ * A client component because the active section depends on the current path.
+ */
 export function DashboardNav() {
   const pathname = usePathname()
 

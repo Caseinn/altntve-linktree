@@ -3,6 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { getSocialLinks } from "@/lib/queries"
 import { publicLinkHref } from "@/lib/routes"
 
+/** Visible social links as a wrapped icon row on the public page. */
 export async function SocialRow() {
   const links = await getSocialLinks()
 
@@ -34,6 +35,7 @@ export async function SocialRow() {
   )
 }
 
+/** Placeholder for `SocialRow`, matching its wrapping and footprint. */
 SocialRow.Skeleton = function SocialRowSkeleton() {
   return (
     <ul className="flex items-start gap-x-12 gap-y-6 px-3">

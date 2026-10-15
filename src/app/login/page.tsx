@@ -4,6 +4,7 @@ import { PageShell } from "@/components/page-shell"
 
 export const metadata = { title: "Sign In" }
 
+/** Sign-in page; the proxy sends an already-authenticated visitor to the dashboard. */
 export default function Page() {
   return (
     <PageShell header={<BrandHeader />}>

@@ -12,6 +12,13 @@ import { ROUTES } from "@/lib/routes"
 
 export const instant = false
 
+/**
+ * Dashboard chrome: brand header, sign out, and section nav.
+ *
+ * Forced dynamic with `connection()` because the admin check reads cookies, and
+ * re-checked here so a lapsed session lands on the login page rather than a
+ * half-rendered dashboard.
+ */
 export default async function DashboardLayout({
   children,
 }: LayoutProps<"/dashboard">) {

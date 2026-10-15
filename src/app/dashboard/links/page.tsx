@@ -5,6 +5,7 @@ import { getAllLinks } from "@/lib/queries"
 
 export const metadata = { title: "Links" }
 
+/** Links section: heading plus the table behind a suspense boundary. */
 export default function Page() {
   return (
     <section className="flex flex-col gap-6">
@@ -19,6 +20,7 @@ export default function Page() {
   )
 }
 
+/** Link table, held back by a boundary so the heading can paint first. */
 async function LinksTable() {
   const links = await getAllLinks()
   return <LinksManager links={links} />

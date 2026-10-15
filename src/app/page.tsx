@@ -9,10 +9,17 @@ import { SocialRow } from "@/components/social-row"
 import { buildMetadata } from "@/lib/metadata"
 import { getSite } from "@/lib/queries"
 
+/** Metadata for the public page, from the stored profile. */
 export async function generateMetadata() {
   return buildMetadata(await getSite())
 }
 
+/**
+ * The public page.
+ *
+ * Each section waits on its own cached query behind a matching skeleton, so one
+ * slow section never holds back the others.
+ */
 export default async function Page() {
   const site = await getSite()
 

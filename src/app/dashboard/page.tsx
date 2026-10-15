@@ -5,6 +5,7 @@ import { getSite } from "@/lib/queries"
 
 export const metadata = { title: "Profile" }
 
+/** Profile section: heading plus the editor behind a suspense boundary. */
 export default function Page() {
   return (
     <section className="flex flex-col gap-6">
@@ -19,6 +20,7 @@ export default function Page() {
   )
 }
 
+/** Profile editor, held back by a boundary so the heading can paint first. */
 async function ProfileEditor() {
   const site = await getSite()
 

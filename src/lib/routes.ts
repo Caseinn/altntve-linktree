@@ -1,3 +1,4 @@
+/** Every internal path, so links to the app's own routes are spelled once. */
 export const ROUTES = {
   dashboard: "/dashboard",
   dashboardLinks: "/dashboard/links",
@@ -5,6 +6,12 @@ export const ROUTES = {
   login: "/login",
 } as const
 
+/**
+ * Public path for a slug.
+ *
+ * Returned as a literal type so `typedRoutes` can check it against the generated
+ * route table.
+ */
 export const publicLinkHref = (slug: string) => `/l/${slug}` as const
 
 /**

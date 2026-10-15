@@ -18,6 +18,12 @@ export const metadata: Metadata = {
   title: { default: BRAND.name, template: `%s · ${BRAND.name}` },
 }
 
+/**
+ * Root document.
+ *
+ * `lang` is fixed because the brand copy is Indonesian throughout, rather than
+ * inferred from page content.
+ */
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html className={`${geistSans.variable} h-full antialiased`} lang="id">

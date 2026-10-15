@@ -4,6 +4,7 @@ import { BrandHeader } from "@/components/brand-header"
 import { PageShell } from "@/components/page-shell"
 import { ROUTES } from "@/lib/routes"
 
+/** 404 page for any unmatched route. */
 export default function NotFound() {
   return (
     <PageShell header={<BrandHeader />}>

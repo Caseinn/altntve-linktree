@@ -7,6 +7,7 @@ import { BACKGROUND } from "@/config/brand"
 export const PLATE_ARTWORK_CLASS =
   "pointer-events-none top-0 left-1/2 h-full w-auto max-w-none -translate-x-1/2"
 
+/** Gradient that fades the plate back into the page background at both edges. */
 export const PLATE_FADE_CLASS =
   "pointer-events-none bg-[linear-gradient(to_right,var(--background)_0%,transparent_18%,transparent_82%,var(--background)_100%)]"
 

@@ -1,6 +1,7 @@
 import { Emblem } from "@/components/emblem"
 import { Wordmark } from "@/components/wordmark"
 
+/** Wordmark and credit, shown at the foot of every page shell. */
 export function SiteFooter() {
   return (
     <footer className="flex flex-col">

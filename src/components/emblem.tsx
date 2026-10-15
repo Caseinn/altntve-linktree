@@ -1,3 +1,4 @@
+/** The oval line-art brand mark, sized by the caller's `className`. */
 export function Emblem({ className }: { className?: string }) {
   return (
     <svg

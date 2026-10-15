@@ -68,14 +68,18 @@ export function ShareButton({ text, title }: { text: string; title: string }) {
     }
   }
 
+  /**
+   * Copies the page URL, leaving the chip unchanged when the browser refuses.
+   *
+   * Clipboard writes are blocked outside secure contexts, which is a normal state
+   * on an HTTP host rather than a fault worth surfacing.
+   */
   async function copyLink() {
     try {
       await navigator.clipboard.writeText(url)
       setIsCopied(true)
       setTimeout(() => setIsCopied(false), 2000)
-    } catch {
-      // Clipboard writes are blocked outside secure contexts.
-    }
+    } catch {}
   }
 
   async function shareMore() {
