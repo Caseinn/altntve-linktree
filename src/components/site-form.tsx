@@ -34,7 +34,9 @@ const identity = async (file: File) => file
  *
  * Image previews come from local object URLs and skip the optimizer, because a
  * blob URL cannot be fetched server-side and the stored URL should stay visible
- * while it is being replaced.
+ * while it is being replaced. The opacity slider is the one field that stays
+ * uncontrolled while the admin drags it, then snaps back to whatever a save
+ * delivers.
  *
  * @param props - Current stored values, used as uncontrolled defaults.
  */
@@ -45,7 +47,6 @@ export function SiteForm({ defaults }: { defaults: SiteDefaults }) {
     {},
   )
   const [opacity, setOpacity] = useState(defaults.backgroundOpacity)
-  const [storedOpacity, setStoredOpacity] = useState(defaults.backgroundOpacity)
   const avatarFile = useRef<HTMLInputElement>(null)
   const avatarRemove = useRef<HTMLInputElement>(null)
   const backgroundFile = useRef<HTMLInputElement>(null)
@@ -70,10 +71,10 @@ export function SiteForm({ defaults }: { defaults: SiteDefaults }) {
     router.refresh()
   }, [avatarFile, backgroundFile, clearAvatar, clearBackground, router, state])
 
-  if (storedOpacity !== defaults.backgroundOpacity) {
-    setStoredOpacity(defaults.backgroundOpacity)
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setOpacity(defaults.backgroundOpacity)
-  }
+  }, [defaults.backgroundOpacity])
 
   const backgroundAvifUrl = defaults.backgroundWebpUrl
     ? defaults.backgroundAvifUrl || "/background.avif"

@@ -1,7 +1,7 @@
 "use client"
 
+import { X } from "@phosphor-icons/react"
 import { cn } from "cn"
-import { XIcon } from "lucide-react"
 import { Dialog as DialogPrimitive } from "radix-ui"
 import * as React from "react"
 
@@ -46,7 +46,7 @@ function DialogContent({
               size="icon-sm"
               variant="ghost"
             >
-              <XIcon />
+              <X weight="thin" />
               <span className="sr-only">Close</span>
             </Button>
           </DialogPrimitive.Close>

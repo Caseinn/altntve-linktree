@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react"
+import { ArrowDown, ArrowUp, Plus, Trash } from "@phosphor-icons/react"
 import { useActionState, useState } from "react"
 
 import {
@@ -23,6 +23,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { LINK_KIND_LABELS, LINK_KINDS, type LinkKind } from "@/config/brand"
+import { publicLinkHref } from "@/lib/routes"
 
 type LinkRow = {
   clicks: number
@@ -36,6 +37,14 @@ type LinkRow = {
   url: string
 }
 
+/**
+ * Dashboard link table, grouped by kind with create, edit, delete, and reorder.
+ *
+ * Every row owns its own action state so one failing dialog never blocks the
+ * rest of the table.
+ *
+ * @param props - Every link, hidden ones included.
+ */
 export function LinksManager({ links }: { links: LinkRow[] }) {
   const [createState, createAction, creating] = useActionState<
     ActionState,
@@ -80,7 +89,7 @@ export function LinksManager({ links }: { links: LinkRow[] }) {
                       <span className="text-sm font-medium">{link.title}</span>
                     </span>
                     <span className="truncate text-xs text-neutral-500">
-                      /l/{link.slug}
+                      {publicLinkHref(link.slug)}
                     </span>
                   </div>
 
@@ -123,7 +132,7 @@ function CreateLinkDialog({
     <Dialog onOpenChange={setOpen} open={open}>
       <DialogTrigger asChild>
         <Button size="sm" variant="outline">
-          <Plus aria-hidden className="size-3.5" />
+          <Plus aria-hidden className="size-3.5" weight="thin" />
           New Link
         </Button>
       </DialogTrigger>
@@ -163,7 +172,7 @@ function DeleteLinkButton({ link }: { link: LinkRow }) {
           size="icon-xs"
           variant="ghost"
         >
-          <Trash2 aria-hidden className="size-3.5" />
+          <Trash aria-hidden className="size-3.5" weight="thin" />
         </Button>
       </DialogTrigger>
 
@@ -216,7 +225,7 @@ function EditLinkDialog({ link }: { link: LinkRow }) {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-base brand">Edit Link</DialogTitle>
-          <DialogDescription>/l/{link.slug}</DialogDescription>
+          <DialogDescription>{publicLinkHref(link.slug)}</DialogDescription>
         </DialogHeader>
 
         <form action={formAction} className="flex flex-col gap-4">
@@ -318,9 +327,9 @@ function MoveButton({
         variant="ghost"
       >
         {direction === "up" ? (
-          <ArrowUp aria-hidden className="size-3.5" />
+          <ArrowUp aria-hidden className="size-3.5" weight="thin" />
         ) : (
-          <ArrowDown aria-hidden className="size-3.5" />
+          <ArrowDown aria-hidden className="size-3.5" weight="thin" />
         )}
       </Button>
     </form>
